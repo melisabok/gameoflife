@@ -27,6 +27,128 @@
 
     <script>
 
+        function GameOflife(options) {
+
+            this.rows = options.rows;
+            this.cols = options.cols;
+            this.data = [];
+            for(var i = 0; i < this.rows; i++) {
+                for(var j = 0; j < this.cols; j++) {
+                    this.data.push({ x: j, y: i, live: 0 });
+                }
+            }
+        }
+
+        GameOflife.prototype.setInitialState = function(init) {
+
+            for(var i = 0; i < init.length; i++) {
+                var pos = this.getPos(init[i][0], init[i][1]);
+                this.data[pos].live = 1;
+            }
+        };
+
+        GameOflife.prototype.getPos = function(x, y) {
+
+            if ( x >= 0 && x < this.cols && y >= 0 && y < this.rows ) {
+                return (y * this.cols) + x; 
+            }
+            return -1;
+        };
+
+        GameOflife.prototype.getCell = function(x, y) {
+
+            var pos = this.getPos(x, y);
+
+            if (pos >= 0 && pos < this.data.length ) {
+                return this.data[pos];
+            }
+
+            return {};
+        };
+
+        GameOflife.prototype.getNeighbours = function(cell) {
+
+            var x = cell.x;
+            var y = cell.y;
+            var cells = [];
+
+            cells.push(this.getCell(x - 1, y - 1));
+            cells.push(this.getCell(x - 1, y));
+            cells.push(this.getCell(x - 1, y + 1));
+            cells.push(this.getCell(x, y - 1));
+            cells.push(this.getCell(x, y + 1));
+            cells.push(this.getCell(x + 1, y - 1));
+            cells.push(this.getCell(x + 1, y));
+            cells.push(this.getCell(x + 1, y + 1));
+            
+            return cells; 
+        };
+
+        GameOflife.prototype.nextGeneration = function() {
+
+            var newData = [];
+
+            for(var i = 0; i < this.data.length; i++) {
+
+                var cell = this.data[i];
+                var live = 0;
+                var livesCount = 0;
+                var neighbours = this.getNeighbours(cell);
+
+                for (var j = 0; j < neighbours.length; j++) {
+                    if (neighbours[j].live && neighbours[j].live == 1) {
+                        livesCount = livesCount + 1;
+                    }
+                }
+ 
+                //Rule 1; Any live cell with fewer than two live neighbours dies, as if caused by under-population.
+                if (livesCount < 2 && cell.live == 1) {
+                    //console.log('dies');
+                    live = 0;
+                }
+
+                //Rule 2: Any live cell with two or three live neighbours lives on to the next generation.
+                if ((livesCount == 2 || livesCount == 3) && cell.live == 1) {
+                    //console.log('keep living');
+                    live = 1;
+                }
+
+                //Rule 3; Any live cell with more than three live neighbours dies, as if by overcrowding.
+                if ((livesCount > 3) && cell.live == 1) {
+                    //console.log('dies');
+                    live = 0;
+                }
+
+                //Rule 4: Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+                if (livesCount == 3 && cell.live == 0) {
+                    //console.log('born!');
+                    live = 1;
+                }
+
+                newData.push({x: cell.x, y: cell.y, live: live});                   
+
+            }
+
+            this.data = newData;
+
+        }
+
+        GameOflife.prototype.start = function() {
+            
+            var self = this;
+            this.nextGeneration();
+
+            d3.selectAll("rect")
+                .data(this.data)
+                    //.transition()
+                .attr('class', function(d) { return "live" + d.live; });
+
+            setTimeout(function(){self.start()}, 30);
+
+        }
+
+
+
         var rows = 40;
         var cols = 50;
         var biBlock = [[1, 1], [2, 1], [1, 2], [2, 2], [4, 1], [4, 2], [5, 1], [5, 2]];
@@ -46,151 +168,33 @@
             gosperGun[z][1] = gosperGun[z][1] + 30;
         }
 
-        var data = [];
-
-        for(var i = 0; i < rows; i++) {
-            for(var j = 0; j < cols; j++) {
-                data.push({ x: j, y: i, live: 0 });
-            }
-        }
-
-        function getPos(x, y) {
-            if(x >= 0 && x < cols && y >= 0 && y < rows) {
-                return (y * cols) + x; 
-            }
-                return -1;
-            
-        }
-
-        function getCell(mydata, x, y) {
-            var pos = getPos(x, y);
-
-            if(pos >= 0 && pos < mydata.length ) {
-                return mydata[pos];
-            }
-
-            return {};
-        }
-
-        function getNeighbours(mydata, cell) {
-
-            var x = cell.x;
-            var y = cell.y;
-            var cells = [];
-
-            cells.push(getCell(mydata, x - 1, y - 1));
-            cells.push(getCell(mydata, x - 1, y));
-            cells.push(getCell(mydata, x - 1, y + 1));
-            cells.push(getCell(mydata, x, y - 1));
-            cells.push(getCell(mydata, x, y + 1));
-            cells.push(getCell(mydata, x + 1, y - 1));
-            cells.push(getCell(mydata, x + 1, y));
-            cells.push(getCell(mydata, x + 1, y + 1));
-            
-            return cells; 
-        }
-
-        function step(mydata) {
-
-            console.log('step');
-            var newData = [];
-
-            for(var i = 0; i < mydata.length; i++) {
-
-                var cell = mydata[i];
-                var live = 0;
-
-                var neighbours = getNeighbours(mydata, cell);
-                //console.log(cell, neighbours);
-                var livesCount = 0;
-                for(var j = 0; j < neighbours.length; j++) {
-                    if(neighbours[j].live && neighbours[j].live == 1) {
-                        livesCount = livesCount + 1;
-                    }
-                }
-                //console.log('livesCount', livesCount);
-
-                //Rule 1; Any live cell with fewer than two live neighbours dies, as if caused by under-population.
-                if(livesCount < 2 && cell.live == 1) {
-                    //console.log('dies');
-                    live = 0;
-                }
-
-                //Rule 2: Any live cell with two or three live neighbours lives on to the next generation.
-                if((livesCount == 2 || livesCount == 3) && cell.live == 1) {
-                    //console.log('keep living');
-                    live = 1;
-                }
-
-                //Rule 3; Any live cell with more than three live neighbours dies, as if by overcrowding.
-                if((livesCount > 3) && cell.live == 1) {
-                    //console.log('dies');
-                    live = 0;
-                }
-
-                //Rule 4: Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
-                if(livesCount == 3 && cell.live == 0) {
-                    //console.log('born!');
-                    live = 1;
-                }
-
-                newData.push({x: cell.x, y: cell.y, live: live});                   
-
-            }
-
-            return newData;
-
-        }
-
-        function setInit(mydata, init) {
-            for(var i = 0; i < init.length; i++) {
-                var pos = getPos(init[i][0], init[i][1]);
-                mydata[pos].live = 1;
-            }
-            return mydata;
-        }
-
-        function start() {
-            
-            data = step(data);
-
-            d3.selectAll("rect")
-                .data(data)
-                    //.transition()
-                .attr('class', function(d) { return "live" + d.live; });
-
-            setTimeout(function(){start()}, 50);
-
-        }
-        data = setInit(data, gosperGun);
-
-        var width = 10;
-        var height = 10;
+        var gameOfLife = new GameOflife({ rows: rows, cols: cols});
+        gameOfLife.setInitialState(gosperGun);
 
 
+        var width = 8;
+        var height = 8;
         var totalWidth = cols * width;
         var totalHeight = rows * height;
         
 
         var graph = d3.select(".chart").attr("width", totalWidth).attr("height", totalHeight);
 
-        // X scale will fit values from 0-10 within pixels 0-100
         var x = d3.scale.linear().domain([0, cols]).range([0, totalWidth]);
-        // Y scale will fit values from 0-10 within pixels 0-100
         var y = d3.scale.linear().domain([0, rows]).range([0, totalHeight]);
 
         var bar = graph.selectAll("g")
-            .data(data)
+            .data(gameOfLife.data)
             .enter()
         
         bar.append("rect")
             .attr('class', function(d) { return "live" + d.live; })
-            .attr("width", width - 0.5)
-            .attr("height", height - 0.5)
+            .attr("width", width - 0.3)
+            .attr("height", height - 0.3)
             .attr("x", function(d) { return x(d.x); })
             .attr("y", function(d) { return y(d.y); });
 
-        setTimeout(function(){start()}, 1000);
+        setTimeout(function(){gameOfLife.start()}, 1000);
         
         
     </script>
